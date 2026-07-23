@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "as"
+version = "0.0.1"
+description = "Multi Agent Orchestrator system that helps with solving the problems by writing the code."
+requires-python = ">=3.10"
+dependencies = [
+
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+multi-agent-llm-company-system = "main:main"
+
+[tool.setuptools.packages.find]
+include = ["agents*", "orchestrator*", "templates*"]
+
+[tool.setuptools]
+py-modules = ["main", "interactive_mode"]
+
+
