@@ -52,7 +52,7 @@ planner = client.chat.completions.create(
 )
 
 raw = planner.choices[0].message.content.strip()
-print(type(raw))
+
 # strip accidental code fences if the model adds them anyway
 if raw.startswith("```"):
     raw = raw.strip("`")
@@ -62,14 +62,10 @@ if raw.startswith("```"):
 data = json.loads(raw)
 
 
-if 'todos' in data:
-    result = data.get('todos')
+if "todos" in data:
+    result = data.get("todos")
 else:
     result = data
-print('length of result',len(result))
-
-print(result)
-# loop n (count of todo list)
 
 current_todos = []
 
@@ -77,26 +73,23 @@ for task in range(len(result)):
     # print(result[task]['task'])
     print(f"task {task},{result[task]['content']}")
     router = client.chat.completions.create(
-    model=Model,
-    messages=[
-        {
-            "role": "system",
-            "content": "You are a router. Given a user request, output ONLY the name of the best agent "
-            f"from this list: {list(AGENTS.keys())}. No other text.",
-        },
-        {"role": "user", "content": result[task]['content']},
-    ],
-    temperature=0.1,
-)
+        model=Model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a router. Given a user request, output ONLY the name of the best agent "
+                f"from this list: {list(AGENTS.keys())}. No other text.",
+            },
+            {"role": "user", "content": result[task]["content"]},
+        ],
+        temperature=0.1,
+    )
 
     print("calling the Agent:", router.choices[0].message.content)
-    # print('content',result)
-    # print(result[task])
+
     if router.choices[0].message.content == "Developer":
-        output = developer(result[task]['content'])
-        # if status == "max_turns":
-        #     print("WARNING: developer bailed out with unfinished todos")
-        print('output',output)
-        # print(status)
+        status, output = developer(result[task]["content"])
+    elif router.choices[0].message.content == "QA Engineer":
+        status, output = qa_engineer(result[task]["content"])
     else:
-        print('another agent')
+        print("another agent")

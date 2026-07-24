@@ -16,12 +16,12 @@ def subtract(a, b):
 
 
 def multiply(a, b):
-   """Return the product of a and b."""
+    """Return the product of a and b."""
     return a * b
 
 
 def divide(a, b):
-    """Return the quotient of a and b (a / b). Raises ValueError on divide-by-zero."""
+    """Return the quotient of a and b (a / b). Raises ValueError on division by zero."""
     if b == 0:
         raise ValueError("Cannot divide by zero.")
     return a / b

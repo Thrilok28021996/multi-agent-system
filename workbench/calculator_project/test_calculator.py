@@ -2,6 +2,7 @@
 test_calculator.py
 
 Unit tests for the calculator module.
+Run with: python -m unittest test_calculator.py
 """
 
 import unittest
@@ -16,18 +17,18 @@ class TestCalculator(unittest.TestCase):
 
     def test_subtract(self):
         self.assertEqual(subtract(5, 3), 2)
-        self.assertEqual(subtract(0, 5), -5)
-        self.assertEqual(subtract(10, 10), 0)
+        self.assertEqual(subtract(0, 10), -10)
+        self.assertEqual(subtract(-3, -3), 0)
 
     def test_multiply(self):
         self.assertEqual(multiply(4, 3), 12)
-        self.assertEqual(multiply(-2, 3), -6)
+        self.assertEqual(multiply(-2, 5), -10)
         self.assertEqual(multiply(0, 100), 0)
 
     def test_divide(self):
         self.assertEqual(divide(10, 2), 5)
-        self.assertEqual(divide(9, 3), 3)
-        self.assertEqual(divide(-6, 2), -3)
+        self.assertEqual(divide(-9, 3), -3)
+        self.assertAlmostEqual(divide(7, 2), 3.5)
 
     def test_divide_by_zero(self):
         with self.assertRaises(ValueError):

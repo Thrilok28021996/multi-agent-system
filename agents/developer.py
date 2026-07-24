@@ -48,42 +48,41 @@ tools = [
 TOOL_IMPL = {
     "read_file": read_file,
     "write_file": write_file,
-
 }
 
 
-def developer(tasks: str) -> tuple[str]:
+def developer(tasks: str) -> tuple[str, str]:
     client = OpenAI(base_url=MODEL_HOST, api_key=OPENAI_API_KEY)
 
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a developer. You will work on the tasks assigned by the orchestrator by using the respective tools(read_file,write_file) to read/write a file as necessary.if a file exists read that file and make only relevant changes to that file. Once the task has been completed. you will return 'completed' "
+                "You are a developer. You will work on the tasks assigned by the orchestrator by using the respective tools(read_file,write_file) to read/write a file as necessary.if a file exists read that file and make only relevant changes to that file. Once the task has been completed. you will return the status as 'completed' "
             ),
         },
         {"role": "user", "content": tasks},
     ]
 
-
     response = client.chat.completions.create(
-    model=Model,
-    messages=messages,
-    tools=tools,
-    temperature=0.1,
-)
+        model=Model,
+        messages=messages,
+        tools=tools,
+        temperature=0.1,
+    )
     msg = response.choices[0].message
+    print(msg)
     messages.append(msg.model_dump(exclude_none=True))
 
-    if not msg.tool_calls:
-        return msg.content  # model is done, no more tool calls requested
-
     for tc in msg.tool_calls:
-            fn_name = tc.function.name
-            args = json.loads(tc.function.arguments)
-            result = TOOL_IMPL[fn_name](**args)
-            messages.append({
+        fn_name = tc.function.name
+        args = json.loads(tc.function.arguments)
+        result = TOOL_IMPL[fn_name](**args)
+        messages.append(
+            {
                 "role": "tool",
                 "tool_call_id": tc.id,
                 "content": str(result),
-            })
+            }
+        )
+    return "completed", msg.content
