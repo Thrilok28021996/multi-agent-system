@@ -1,8 +1,4 @@
-"""
-calculator.py
-
-A simple calculator module providing basic arithmetic operations.
-"""
+"""Calculator module providing basic arithmetic operations."""
 
 
 def add(a, b):
@@ -21,7 +17,11 @@ def multiply(a, b):
 
 
 def divide(a, b):
-    """Return the quotient of a and b (a / b). Raises ValueError on division by zero."""
+    """Return the quotient of a and b (a / b).
+
+    Raises:
+        ValueError: If b is zero.
+    """
     if b == 0:
         raise ValueError("Cannot divide by zero.")
     return a / b

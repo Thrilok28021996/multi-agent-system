@@ -68,10 +68,10 @@ else:
     result = data
 
 current_todos = []
-
+context = ""
 for task in range(len(result)):
     # print(result[task]['task'])
-    print(f"task {task},{result[task]['content']}")
+    # print(f"task {task},{result[task]['content']}")
     router = client.chat.completions.create(
         model=Model,
         messages=[
@@ -84,12 +84,20 @@ for task in range(len(result)):
         ],
         temperature=0.1,
     )
+    task_prompt = (
+        f"{result[task]['content']}\n\nContext from previous steps:\n{context}"
+        if context
+        else result[task]["content"]
+    )
 
     print("calling the Agent:", router.choices[0].message.content)
-
-    if router.choices[0].message.content == "Developer":
-        status, output = developer(result[task]["content"])
-    elif router.choices[0].message.content == "QA Engineer":
-        status, output = qa_engineer(result[task]["content"])
+    print('Task:',task_prompt)
+    agent_name = router.choices[0].message.content.strip()
+    if agent_name == "Developer":
+        status, output = developer(task_prompt)
+    elif agent_name == "QA Engineer":
+        status, output = qa_engineer(task_prompt)
     else:
         print("another agent")
+        continue
+    context += f"\n[{agent_name}] {output}"

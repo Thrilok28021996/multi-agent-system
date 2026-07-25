@@ -1,7 +1,7 @@
 import json
 from openai import OpenAI
 import os
-from tools import read_file, write_file
+from tools import read_file, write_file,code_execution
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,11 +43,30 @@ tools = [
             },
         },
     },
+     {
+        "type": "function",
+        "function": {
+            "name": "code_execution",
+            "description": "Execute the file at the given path",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative or absolute file path",
+                    }
+                },
+                "required": ["path"],
+            },
+        },
+    },
+
 ]
 
 TOOL_IMPL = {
     "read_file": read_file,
     "write_file": write_file,
+    "code_execution":code_execution,
 }
 
 
@@ -58,7 +77,7 @@ def developer(tasks: str) -> tuple[str, str]:
         {
             "role": "system",
             "content": (
-                "You are a developer. You will work on the tasks assigned by the orchestrator by using the respective tools(read_file,write_file) to read/write a file as necessary.if a file exists read that file and make only relevant changes to that file. Once the task has been completed. you will return the status as 'completed' "
+                "You are a developer. You will work on the tasks assigned by the orchestrator by using the respective tools(read_file,write_file) to read/write a file as necessary.if a file exists read that file and make only relevant changes to that file. Run code using the code_exection tool and fix any errors if found. Once the task has been completed. you will return the status as 'completed' "
             ),
         },
         {"role": "user", "content": tasks},
@@ -71,7 +90,7 @@ def developer(tasks: str) -> tuple[str, str]:
         temperature=0.1,
     )
     msg = response.choices[0].message
-    print(msg)
+    # print(msg)
     messages.append(msg.model_dump(exclude_none=True))
 
     for tc in msg.tool_calls:
