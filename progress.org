@@ -4,6 +4,4 @@
 
 ** TODO Path file to be the current working directory
 ** NEXT make it a python package where we can run it directly on the terminal
-** TODO Workflow with todo file for the each agent as a source of truth for it to act up on not just blindly focus on the some task it should be splitted to smaller tasks and create a todo list that it should act up on
-** TODO how to make sure the entire orchestrator should keep running till it completes the given query
 ** TODO Feedback from the agents to the orchestrator so that the orchestrator knows the progress of the query

@@ -37,13 +37,28 @@ planner = client.chat.completions.create(
     messages=[
         {
             "role": "system",
-            "content": """You are a planner. Given a user request, output ONLY the todo list.No other text.
-            When you get the tasks {tasks}, break it down into smaller doable items and call update_todos
-            to create the initial list (status 'pending'). As you start an item call update_todos with it set
-            to 'in_progress', and when finished call update_todos with it set to 'completed'. Always resend the
-            full list on every call. Always respond with valid JSON only.
-            The todo full list should be in this format
-            [{id:1,content:"",status:"pending/in_progress/completed"},{id:2,content:"",status:"pending/in_progress/completed"}]""",
+            "content": """You are a planner. Given a user request, break it down into a sequence of
+small, concrete, actionable tasks and output ONLY a JSON object — no other text.
+
+Format (valid JSON, all keys quoted):
+{
+  "todos": [
+    {
+      "id": 1,
+      "content": "Short imperative description of the task",
+      "status": "pending",
+      "target_file": "relative/path/if/known, or null",
+      "acceptance_criteria": ["condition 1", "condition 2"]
+    }
+  ]
+}
+
+Rules:
+- Every task's status is always "pending" — do not use any other status value.
+- Order tasks so dependencies come before the tasks that need them.
+- target_file should be a real relative path when you can infer one, otherwise null.
+- acceptance_criteria should be a short list of concrete, checkable conditions; use an empty list if none apply.
+- Output valid JSON only.""",
         },
         {"role": "user", "content": args.query},
     ],
@@ -61,17 +76,19 @@ if raw.startswith("```"):
 
 data = json.loads(raw)
 
+data = json.loads(raw)
+result = data["todos"]
+# if "todos" in data:
+#     result = data.get("todos")
+# else:
+#     result = data
 
-if "todos" in data:
-    result = data.get("todos")
-else:
-    result = data
-
-current_todos = []
+current_todos = result  # keep a live reference to the todo list
 context = ""
 for task in range(len(result)):
-    # print(result[task]['task'])
-    # print(f"task {task},{result[task]['content']}")
+    task_data = current_todos[task]
+    task_data["status"] = "in_progress"
+
     router = client.chat.completions.create(
         model=Model,
         messages=[
@@ -80,24 +97,28 @@ for task in range(len(result)):
                 "content": "You are a router. Given a user request, output ONLY the name of the best agent "
                 f"from this list: {list(AGENTS.keys())}. No other text.",
             },
-            {"role": "user", "content": result[task]["content"]},
+            {"role": "user", "content": task_data["content"]},
         ],
         temperature=0.1,
     )
-    task_prompt = (
-        f"{result[task]['content']}\n\nContext from previous steps:\n{context}"
-        if context
-        else result[task]["content"]
-    )
 
     print("calling the Agent:", router.choices[0].message.content)
-    print('Task:',task_prompt)
+    print("Task:", task_data)
     agent_name = router.choices[0].message.content.strip()
+
     if agent_name == "Developer":
-        status, output = developer(task_prompt)
+        status, output = developer(task_data, context=context)
     elif agent_name == "QA Engineer":
-        status, output = qa_engineer(task_prompt)
+        status, output = qa_engineer(task_data, context=context)
     else:
         print("another agent")
+        task_data["status"] = "skipped"
         continue
-    context += f"\n[{agent_name}] {output}"
+
+    task_data["status"] = "completed" if status == "completed" else "failed"
+    context += (
+        f"\n[{agent_name}] Task {task_data['id']} ({task_data['status']}): {output}"
+    )
+
+print("\nFinal todo list:")
+print(json.dumps(current_todos, indent=2))
