@@ -5,7 +5,7 @@ import subprocess, shlex, os
 
 os.makedirs("workbench", exist_ok=True)
 
-PROJECT_ROOT = os.path.abspath(os.getenv("PROJECT_ROOT", "."))
+PROJECT_ROOT = os.path.abspath("workbench")
 
 BLOCKED = {"rm", "sudo", "curl", "wget", "chmod", "dd", ":(){"}
 

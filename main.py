@@ -104,6 +104,7 @@ for task in range(len(result)):
 
     print("calling the Agent:", router.choices[0].message.content)
     print("Task:", task_data)
+
     agent_name = router.choices[0].message.content.strip()
 
     if agent_name == "Developer":
@@ -114,7 +115,7 @@ for task in range(len(result)):
         print("another agent")
         task_data["status"] = "skipped"
         continue
-
+    print("*" * 30)
     task_data["status"] = "completed" if status == "completed" else "failed"
     context += (
         f"\n[{agent_name}] Task {task_data['id']} ({task_data['status']}): {output}"

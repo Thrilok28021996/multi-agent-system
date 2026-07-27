@@ -9,6 +9,8 @@ Model = os.getenv("MODEL")
 MODEL_HOST = os.getenv("MODEL_HOST")
 OPENAI_API_KEY = os.getenv("BACKEND")
 
+MAX_TOOL_ITERATIONS = 6  # hard ceiling so a stuck agent can't loop forever
+
 # --- OpenAI Responses API tool schema (NOT input_schema) ---
 tools = [
     {
@@ -94,8 +96,6 @@ TOOL_IMPL = {
 
 def developer(tasks: str, context: str) -> tuple[str, str]:
     client = OpenAI(base_url=MODEL_HOST, api_key=OPENAI_API_KEY)
-    # print(tasks.get("id"))
-    # print(tasks.get("content"))
     target_file = (
         tasks.get("target_file")
         or "not specified - infer a reasonable path under the project root"
@@ -116,8 +116,8 @@ def developer(tasks: str, context: str) -> tuple[str, str]:
 INPUT: You will receive a task with: task_id, description,status, target_file (path, may or may not exist), and acceptance_criteria (list of conditions that define "done").
 
 TOOLS:
-- read_file(path)
-- write_file(path, content)
+- read_file(path) - read an existing file
+- write_file(path, content) - write a file to the current path
 - code_execution(path) — runs an existing file to check it executes/imports cleanly
 - run_command(command) — runs a shell command in the project root (mkdir, python -m venv, pip install, pytest, etc.)
 
@@ -127,8 +127,9 @@ WORKFLOW:
 3. For file-level changes: after every write_file call, run code_execution on that file to validate it runs/imports cleanly. For project-level setup (directories, venv, installing dependencies, running test suites): use run_command.
 4. If code_execution errors: read the traceback, patch the specific issue via write_file, re-run. Max 3 fix attempts per task.
 5. If unresolved after 3 attempts → stop. Do not keep looping.
+6. Once the task is satisfied (or unresolved after 3 fix attempts), respond with plain text (no tool call) containing ONLY the final JSON described below. This is how the orchestrator knows you are done.
 
-RETURN FORMAT (always JSON):
+RETURN FORMAT (always JSON, as your final plain-text message):
 {
   "task_id": "<id>",
   "status": "completed" | "failed",
@@ -147,27 +148,70 @@ CONSTRAINTS:
         {"role": "user", "content": prompt},
     ]
 
-    response = client.chat.completions.create(
-        model=Model,
-        messages=messages,
-        tools=tools,
-        temperature=0.1,
-    )
-    msg = response.choices[0].message
-    # print(msg)
-    messages.append(msg.model_dump(exclude_none=True))
+    final_status = "failed"
+    final_output = None
 
-    print(msg)
+    for iteration in range(MAX_TOOL_ITERATIONS):
+        response = client.chat.completions.create(
+            model=Model,
+            messages=messages,
+            tools=tools,
+            temperature=0.1,
+        )
+        msg = response.choices[0].message
+        messages.append(msg.model_dump(exclude_none=True))
 
-    for tc in msg.tool_calls:
-        fn_name = tc.function.name
-        args = json.loads(tc.function.arguments)
-        result = TOOL_IMPL[fn_name](**args)
-        messages.append(
+        if not msg.tool_calls:
+            # Model produced its final answer with no further tool calls.
+            final_output = msg.content
+            final_status = _extract_status(msg.content)
+            break
+
+        print(f"[iteration {iteration}] tool calls:", msg.tool_calls)
+
+        for tc in msg.tool_calls:
+            fn_name = tc.function.name
+            try:
+                args = json.loads(tc.function.arguments)
+                result = TOOL_IMPL[fn_name](**args)
+            except Exception as e:
+                result = f"ERROR calling {fn_name}: {e}"
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": str(result),
+                }
+            )
+    else:
+        # Loop exhausted MAX_TOOL_ITERATIONS without a final plain-text answer.
+        final_output = json.dumps(
             {
-                "role": "tool",
-                "tool_call_id": tc.id,
-                "content": str(result),
+                "task_id": tasks.get("id"),
+                "status": "failed",
+                "files_changed": [],
+                "summary": "Exceeded max tool iterations without a final response.",
+                "execution_output": None,
+                "error": f"No final answer after {MAX_TOOL_ITERATIONS} tool-call iterations.",
             }
         )
-    return "completed", msg.content
+        final_status = "failed"
+
+    return final_status, final_output
+
+
+def _extract_status(content: str) -> str:
+    """Parse the model's final JSON reply to get its actual status,
+    falling back to 'failed' if content isn't valid/parseable JSON."""
+    if not content:
+        return "failed"
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        text = text.removesuffix("json").strip()
+    try:
+        parsed = json.loads(text)
+        return parsed.get("status", "failed")
+    except (json.JSONDecodeError, AttributeError):
+        return "failed"
