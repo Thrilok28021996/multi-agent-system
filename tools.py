@@ -65,11 +65,11 @@ def code_execution(path: str) -> str:
 
     try:
         result = subprocess.run(
-            ["python3", str(p)],
+            ["python3", str(p.resolve())],
             capture_output=True,
             text=True,
             timeout=90,
-            cwd="workbench",
+            cwd=PROJECT_ROOT,
         )
     except subprocess.TimeoutExpired:
         return f"ERROR: execution of {path} timed out after 90s"

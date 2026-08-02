@@ -2,6 +2,10 @@
 :PROPERTIES:
 
 
-** TODO Path file to be the current working directory
+** DONE Path file to be the current working directory
 ** NEXT make it a python package where we can run it directly on the terminal
-** TODO Feedback from the agents to the orchestrator so that the orchestrator knows the progress of the query
+** DONE  Feedback from the agents to the orchestrator so that the orchestrator knows the progress of the query
+** TODO Test whether it works with local llms from lmstudio
+** TODO  Change the path to the current working directory. so that when this becomes a simple python package the genereted code stays in that cwd
+** DONE Instead of max tool iterations let's call the tool until the status is completed
+** TODO Agentic Evaluation -> Tool calling, response, tokens used etc.,

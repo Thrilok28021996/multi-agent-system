@@ -10,6 +10,9 @@ requires-python = ">=3.10"
 dependencies = [
 
     "openai>=1.0.0",
+    "psutil>=5.9.0",
+    "rich>=13.0.0",
+    "colorama>=0.4.6",
 ]
 
 [project.optional-dependencies]
@@ -22,9 +25,7 @@ dev = [
 multi-agent-llm-company-system = "main:main"
 
 [tool.setuptools.packages.find]
-include = ["agents*", "orchestrator*", "templates*"]
+include = ["agents*", "orchestrator*", "templates*", "sysmon*"]
 
 [tool.setuptools]
 py-modules = ["main", "interactive_mode"]
-
-
